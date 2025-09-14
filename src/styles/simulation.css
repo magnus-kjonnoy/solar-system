@@ -1,0 +1,237 @@
+
+.sim-root {
+  display: grid;
+  grid-template-columns: 1fr 250px;
+  grid-template-areas: 'stage panel';
+  width: calc(100% - 2px);
+  height: calc(100% - 2px);
+  /* margin: 50px; */
+  border: rgba(255, 255, 255, 0.5) 1px solid;
+  overflow: hidden;
+  background: #000;
+  color: #e5e7eb;
+}
+
+.sim-stage {
+  grid-area: stage;
+  position: relative;
+  overflow: hidden;
+}
+
+.sim-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: #000;
+  cursor: grab;
+
+  & :active {
+    cursor: grabbing;
+  }
+}
+
+.sim-label-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.sim-label {
+  position: absolute;
+  /* transform: translate(-50%, -120%); */
+  transform: none;
+  background: rgba(0, 0, 0, 0.5);
+  border: rgba(255, 255, 255, 0.2) 1px solid;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  backdrop-filter: blur(2px);
+  pointer-events: auto;
+  user-select: none;
+}
+
+.sim-resizer {
+  position: absolute;
+  top: 0;
+  left: -4px;
+  width: 8px;
+  height: 100%;
+  cursor: col-resize;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+
+  &:hover {
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+  }
+}
+
+.sim-toggle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 5;
+  background: #111827;
+  color: #e5e7eb;
+  border: #1f2937 1px solid;
+  border-radius: 10px;
+  padding: 6px 10px;
+  cursor: pointer;
+
+  &:hover {
+    background: #1f2937;
+  }
+}
+
+.sim-dropdown {
+  width: 100%;
+  /* padding: 8px 0; */
+  background: #111827;
+  color: #e5e7eb;
+  border: #1f2937 1px solid;
+  border-radius: 10px;
+}
+
+.sim-dropdown-header {
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  
+  & button {
+    background: none;
+    color: #e5e7eb;
+    border: none;
+    border-radius: 5px;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    &:hover {
+      background: #354253;
+    }
+
+    & img {
+      width: 16px;
+      height: 16px;
+    }
+  }
+}
+
+.sim-dropdown-content {
+  padding: 0 10px;
+  display: none;
+  display: block;
+}
+
+.sim-dropdown-item {
+  margin-bottom: 10px;
+
+  & label {
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  & input[type='range'] {
+    width: 100%;
+  }
+}
+
+.sim-panel-left {
+  grid-area: panel-left;
+}
+
+.sim-panel {
+  grid-area: panel;
+  border-left: rgba(255, 255, 255, 0.33) 1px solid;
+  padding: 16px 14px;
+  background: var(--background-1);
+  position: relative;
+  overflow: auto;
+
+  & h2 {
+    margin: 0 0 10px 0;
+    font-size: 18px;
+    color: #f9fafb;
+  }
+}
+
+.sim-row {
+  margin: 10px 0;
+
+  & label {
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  & input[type='range'] {
+    width: 100%;
+  }
+}
+
+.sim-help {
+  margin: 25px 0 0px 0;
+  /* bottom: 0;
+  position: absolute; */
+
+  & ul {
+    margin: 6px 0 0 10px;
+    padding: 0;
+  }
+
+  & li {
+    margin: 3px 0;
+    font-size: 14px;
+
+    & b {
+      font-size: 14px;
+    }
+  }
+}
+
+.sim-btn {
+  width: 100%;
+  padding: 8px 10px;
+  background: #111827;
+  color: #e5e7eb;
+  border: #1f2937 1px solid;
+  border-radius: 10px;
+  cursor: pointer;
+
+  &:hover {
+    background: #1f2937;
+  }
+}
+
+.sim-select {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  background: #111827;
+  color: #e5e7eb;
+  border: #1f2937 1px solid;
+  border-radius: 10px;
+  appearance: base-select;
+
+  /* &::picker(select) {
+    appearance: base-select;
+  } */
+
+  &::picker-icon {
+    content: none;
+  }
+
+  &:hover {
+    background: #1f2937;
+  }
+}
+
+.sim-note {
+  opacity: 0.75;
+  font-size: 12px;
+}
