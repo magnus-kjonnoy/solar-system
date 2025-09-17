@@ -3,6 +3,10 @@ import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { Bodies } from '../Components/Bodies'
 import SimDropdown from '../Components/SimDropdown'
 
+import bg_Space from '/image/space.jpg'
+
+// ∞, ×, ·, °, π, Ω, ω, ρ, ☉, 
+
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi ?? Infinity, v)) }
 
 export default function Simulation() {
@@ -10,21 +14,28 @@ export default function Simulation() {
   const [showLabelsStars, setShowLabelsStars] = useState(true)
   const [showLabelsPlanets, setShowLabelsPlanets] = useState(true)
   const [showLabelsDwarfplanets, setShowLabelsDwarfplanets] = useState(true)
-  const [showLabelsMoons, setShowLabelsMoons] = useState(true)
+  const [showLabelsMoons, setShowLabelsMoons] = useState(false)
+  const [showLabelsAsteroids, setShowLabelsAsteroids] = useState(false)
   const [showOrbits, setShowOrbits] = useState(true)
   const [showOrbitsStars, setShowOrbitsStars] = useState(false)
   const [showOrbitsPlanets, setShowOrbitsPlanets] = useState(true)
   const [showOrbitsDwarfplanets, setShowOrbitsDwarfplanets] = useState(true)
   const [showOrbitsMoons, setShowOrbitsMoons] = useState(true)
+  const [showOrbitsAsteroids, setShowOrbitsAsteroids] = useState(true)
   const [showStars, setShowStars] = useState(true)
   const [showPlanets, setShowPlanets] = useState(true)
   const [showDwarfs, setShowDwarfs] = useState(false)
   const [showMoons, setShowMoons] = useState(true)
   const [showRegular, setShowRegular] = useState(true)
-  const [showIrregular, setShowIrregular] = useState(true)
+  const [showIrregular, setShowIrregular] = useState(false)
   const [showSatellitesOnlyOfLocked, setShowSatellitesOnlyOfLocked] = useState(true)
+  const [showAsteroids, setShowAsteroids] = useState(false)
+  const [showAsteroidBelt, setShowAsteroidBelt] = useState(false)
+  const [showKuiperBelt, setShowKuiperBelt] = useState(false)
+  const [showRings, setShowRings] = useState(true)
   const [orbitColorMode, setOrbitColorMode] = useState('default')
   const [pause, setPause] = useState(false)
+  const [timeUnit, setTimeUnit] = useState('days')
   const [timeScale, setTimeScale] = useState(1) // Days per real-time second
   const [radiusScale, setRadiusScale] = useState(1)
   const [moveScale, setMoveScale] = useState(1)
@@ -111,22 +122,29 @@ export default function Simulation() {
     return {
       name: b.name,
       type: b.type,
-      orbit_target: b.orbit_target ?? 'Sun',
-      orbit_direction: b.orbit_direction ?? derivedDir,
-      orbit_type: b.orbit_type ?? undefined,
+      category: b.category ?? undefined,
+      sub_category: b.sub_category ?? undefined,
       group: b.group ?? undefined,
+      sub_group: b.sub_group ?? undefined,
+      orbit_target: b.orbit_target ?? 'Sun',
+      orbit_type: b.orbit_type ?? 'regular',
+      orbit_direction: b.orbit_direction ?? derivedDir,
       distance: b.distance ?? 0,
-      // radius: b.radius ?? 0,
-      // mass: b.mass ?? 0,
-      // density: b.density ?? 0,
       period_days: Math.abs(b.period ?? 1),
-      // rotation: b.rotation ?? 'synchronous',
-      // axial_tilt: b.axial_tilt ?? 0,
+      orbit_speed: b.orbit_speed ?? 0,
       tilt_inclination: b.inclination ?? 0,
       e: b.eccentricity ?? 0,
       Omega_deg: b.Omega_deg ?? 0,
       omega_deg: b.omega_deg ?? 0,
-      // color: b.color ?? '#dddddd',
+      axial_tilt: b.axial_tilt ?? 0,
+      rotation_period: b.rotation_period ?? 'synchronous',
+      rotation_speed: b.rotation_speed ?? 0,
+      flattening: b.flattening ?? 0,
+      radius: b.radius ?? 0,
+      mass: b.mass ?? 0,
+      density: b.density ?? 0,
+      volume: b.volume ?? 0,
+      color: b.color ?? '#dddddd',
       M0_deg: (b.theta0 ?? 0) * 180 / Math.PI,
     }
   }), [bodies])
@@ -174,6 +192,7 @@ export default function Simulation() {
       if (b.type === 'planet') return '#ddd'
       if (b.type === 'dwarf-planet') return '#bbb'
       if (b.type === 'moon') return '#999'
+      if (b.type === 'asteroid') return '#dddddd99'
       return '#aaa'
     }
     if (b.type !== 'moon') {
@@ -216,8 +235,8 @@ export default function Simulation() {
       distance,
       e = 0,
       tilt_inclination = 0,
-      Omega_deg = 0, // Ω
-      omega_deg = 0, // ω
+      Omega_deg = 0,
+      omega_deg = 0,
       period_days,
       M0_deg = 0
     } = el
@@ -259,9 +278,9 @@ export default function Simulation() {
     const {
       distance: a,
       e = 0,
-      tilt_inclination = 0, // i
-      Omega_deg = 0,        // Ω
-      omega_deg = 0,        // ω
+      tilt_inclination = 0,
+      Omega_deg = 0,
+      omega_deg = 0,
     } = el
 
     const nu = nu_deg * DEG
@@ -332,6 +351,43 @@ export default function Simulation() {
 
   function wrapIdx(i, n) { return (i % n + n) % n }
 
+  function parentIndexOf(i) {
+    const pn = elements[i]?.orbit_target || 'Sun'
+    return idxByName.get(pn) ?? null
+  }
+  function makePositionResolver(elements) {
+    const memo = new Array(elements.length).fill(null)
+    const visiting = new Array(elements.length).fill(false)
+
+    function compute(i, days) {
+      if (memo[i]) return memo[i]
+      if (visiting[i]) {
+        memo[i] = { x: 0, y: 0, z: 0 }
+        return memo[i]
+      }
+      visiting[i] = true
+
+      const b = bodies[i]
+      if (b.type === 'star') {
+        memo[i] = { x: 0, y: 0, z: 0 }
+        visiting[i] = false
+        return memo[i]
+      }
+
+      const el = elements[i]
+      const pIdx = parentIndexOf(i)
+      const pPos = (pIdx != null) ? compute(pIdx, days) : { x: 0, y: 0, z: 0 }
+      const rel = keplerToPosition(days, el)
+      memo[i] = { x: pPos.x + rel.x, y: pPos.y + rel.y, z: pPos.z + rel.z }
+      visiting[i] = false
+      return memo[i]
+    }
+
+    return (days) => {
+      for (let i = 0; i < elements.length; i++) compute(i, days)
+      return memo
+    }
+  }
   function parentNameOf(i) {
     const el = elements[i]
     return (el?.orbit_target) || 'Sun'
@@ -341,9 +397,10 @@ export default function Simulation() {
   }
   function isPrimaryVisibleByType(i) {
     const t = typeOf(i)
+    if (t === 'star') return showStars
     if (t === 'planet') return showPlanets
     if (t === 'dwarf-planet') return showDwarfs
-    if (t === 'star') return showStars
+    if (t === 'asteroid') return showAsteroids
     return true
   }
   function lockedPrimaryName() {
@@ -351,7 +408,7 @@ export default function Simulation() {
     const li = nameToIndex.get(lockRef.current)
     if (li == null) return null
     const lt = typeOf(li)
-    if (lt === 'planet' || lt === 'dwarf-planet') return bodies[li].name
+    if (lt === 'planet' || lt === 'dwarf-planet' || lt === 'asteroid') return bodies[li].name
     if (lt === 'moon') return parentNameOf(li)
     return null
   }
@@ -365,14 +422,15 @@ export default function Simulation() {
     if (cls === 'irregular' && !showIrregular) return false
 
     const pName = parentNameOf(i)
-    const pi = nameToIndex.get(pName)
-    if (pi != null && !isPrimaryVisibleByType(pi)) return false
 
     if (showSatellitesOnlyOfLocked) {
       const L = lockedPrimaryName()
       if (!L) return false
       return pName === L
     }
+
+    const pi = nameToIndex.get(pName)
+    if (pi != null && !isPrimaryVisibleByType(pi)) return false
 
     return true
   }
@@ -407,6 +465,119 @@ export default function Simulation() {
     ro.observe(canvas)
 
     let NEAR_D = 0.1
+
+    // Background
+    function loadImage(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image()
+        img.onload = () => resolve(img)
+        img.onerror = reject
+        img.src = src
+      })
+    }
+    let bgImg = null
+    let bgFar = null
+    // let bgNear = null
+    const bgImage = bg_Space;
+    (async () => {
+      bgImg = await loadImage(bgImage)
+      bgFar = ctx.createPattern(bgImg, 'repeat')
+      // bgNear = ctx.createPattern(bgImg, 'repeat')
+    })()
+    function drawImageTiled(ctx, img, ox, oy, scale = 1) {
+      const { width, height } = ctx.canvas
+      const w = img.width * scale
+      const h = img.height * scale
+
+      const x0 = ((ox % w) + w) % w
+      const y0 = ((oy % h) + h) % h
+
+      for (let y = -y0; y < height; y += h) {
+        for (let x = -x0; x < width; x += w) {
+          ctx.drawImage(img, x, y, w, h)
+        }
+      }
+    }
+    function drawBackground() {
+      if (!bgImg) return
+
+      const { right, up } = getCameraBasis()
+
+      const kFar = 0.05
+      const kNear = 0.075
+
+      const roll = cam.current.roll || 0
+      const yaw = cam.current.yaw || 0
+      const pitch = cam.current.pitch || 0
+
+      const yawFar = 0.05
+      const yawNear = 0.02
+      const pitchFar = 0.05
+      const pitchNear = 0.02
+      const rotFar = roll + yaw * yawFar + pitch * pitchFar
+      const rotNear = roll + yaw * yawNear + pitch * pitchNear
+
+      const txFar = (cam.current.target.x * right.x + cam.current.target.y * right.y + cam.current.target.z * right.z) * kFar
+      const tyFar = (cam.current.target.x * up.x + cam.current.target.y * up.y + cam.current.target.z * up.z) * kFar
+      const txNear = (cam.current.target.x * right.x + cam.current.target.y * right.y + cam.current.target.z * right.z) * kNear
+      const tyNear = (cam.current.target.x * up.x + cam.current.target.y * up.y + cam.current.target.z * up.z) * kNear
+
+      const { width, height } = canvas
+
+      ctx.fillStyle = '#000'
+      ctx.fillRect(0, 0, width, height)
+
+      const canTransform = bgFar && bgFar.setTransform /*&& bgNear && bgNear.setTransform*/
+
+      if (canTransform) {
+        // Far
+        {
+          const m = new DOMMatrix()
+            .translateSelf(width / 2, height / 2)
+            .rotateSelf((rotFar * 180) / Math.PI)
+            .translateSelf(-width / 2, -height / 2)
+            .translateSelf(txFar, tyFar)
+          bgFar.setTransform(m)
+          ctx.save()
+          ctx.fillStyle = bgFar
+          ctx.globalAlpha = 1
+          ctx.fillRect(0, 0, width, height)
+          ctx.restore()
+        }
+
+        // Near
+        // {
+        //   const m = new DOMMatrix()
+        //     .translateSelf(width / 2, height / 2)
+        //     .rotateSelf((rotNear * 180) / Math.PI)
+        //     .translateSelf(-width / 2, -height / 2)
+        //     .translateSelf(txNear, tyNear)
+        //   bgNear.setTransform(m)
+        //   ctx.save()
+        //   ctx.fillStyle = bgNear
+        //   ctx.globalAlpha = 0.7
+        //   ctx.fillRect(0, 0, width, height)
+        //   ctx.restore()
+        // }
+      } else {
+        // Fallback
+        ctx.save()
+        ctx.translate(width / 2, height / 2)
+        ctx.rotate(rotFar)
+        ctx.translate(-width / 2, -height / 2)
+        ctx.globalAlpha = 1
+        drawImageTiled(ctx, bgImg, txFar, tyFar, 1)
+        ctx.restore()
+
+        // ctx.save()
+        // ctx.translate(width / 2, height / 2)
+        // ctx.rotate(rotNear)
+        // ctx.translate(-width / 2, -height / 2)
+        // ctx.globalAlpha = 0.7
+        // drawImageTiled(ctx, bgImg, txNear, tyNear, 1)
+        // ctx.restore()
+      }
+    }
 
     // Camera
     const getCameraBasis = () => {
@@ -482,7 +653,8 @@ export default function Simulation() {
       const locked = lockRef.current !== ' '
       const basis = getCameraBasis()
       if (locked) {
-        camTarget.current.dist = clamp(camTarget.current.dist + amount, 0.1, 4000)
+        camTarget.current.dist = clamp(camTarget.current.dist + amount, 1e-4, 4000)
+        // camTarget.current.dist = camTarget.current.dist + amount
       } else {
         camTarget.current.target.x += amount * basis.forward.x
         camTarget.current.target.y += amount * basis.forward.y
@@ -493,9 +665,13 @@ export default function Simulation() {
     function drawFrame(now) {
       const dt = (now - lastT.current) / 1000
       lastT.current = now
-      if (!pause) simDays.current += dt * timeScale
+      // if (!pause) simDays.current += dt * timeScale
+      if (!pause) {
+        const daysPerSecond = timeUnit === 'days' ? timeScale : (timeScale / 24)
+        simDays.current += dt * daysPerSecond
+      }
       const days = simDays.current
-      NEAR_D = Math.max(0.001 * cam.current.dist, 0.02)
+      NEAR_D = Math.max(0.0004 * cam.current.dist, 1e-6)
 
       // Keyboard
       const basisForKeys = getCameraBasis()
@@ -505,6 +681,9 @@ export default function Simulation() {
       const moveRate = cam.current.dist * moveScale * dt
       const zoomStep = cam.current.dist * zoomScale * dt
       const locked = lockRef.current !== ' '
+      const kKeys = 2 * dt
+      const factorIn = Math.exp(-kKeys)
+      const factorOut = Math.exp(+kKeys)
 
       if (keys.current.has('KeyA')) {
         camTarget.current.yaw += rotRate * dt
@@ -526,9 +705,11 @@ export default function Simulation() {
       }
       if (keys.current.has('KeyR')) {
         if (locked) {zoom(-zoomStep)} else {zoom(+zoomStep)}
+        // camTarget.current.dist = clamp(camTarget.current.dist * factorIn, 1e-6, 4e3)
       }
       if (keys.current.has('KeyF')) {
         if (locked) {zoom(+zoomStep)} else {zoom(-zoomStep)}
+        // camTarget.current.dist = clamp(camTarget.current.dist * factorOut, 1e-6, 4e3)
       }
       if (!locked) {
         if (keys.current.has('ArrowRight')) {
@@ -553,28 +734,32 @@ export default function Simulation() {
         }
       }
 
-      // Clear
-      ctx.fillStyle = '#000'
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      // Background
+      // ctx.fillStyle = '#000'
+      // ctx.fillRect(0, 0, canvas.width, canvas.height)
+      drawBackground()
 
-      const positions_AU = new Array(bodies.length).fill(null)
-      for (let i = 0; i < bodies.length; i++) {
-        const b = bodies[i]
-        if (b.type === 'star') {
-          positions_AU[i] = { x: 0, y: 0, z: 0 }
-          continue
-        }
-        const el = elements[i]
-        const rel = keplerToPosition(days, el)
-        const parentName = el.orbit_target || 'Sun'
-        const parentIdx = idxByName.get(parentName)
-        const parentPos = parentIdx != null ? positions_AU[parentIdx] : { x: 0, y: 0, z: 0 }
-        positions_AU[i] = {
-          x: rel.x + parentPos.x,
-          y: rel.y + parentPos.y,
-          z: rel.z + parentPos.z,
-        }
-      }
+      const resolvePositionsAU = makePositionResolver(elements)
+      const positions_AU = resolvePositionsAU(days)
+
+      // const positions_AU = new Array(bodies.length).fill(null)
+      // for (let i = 0; i < bodies.length; i++) {
+      //   const b = bodies[i]
+      //   if (b.type === 'star') {
+      //     positions_AU[i] = { x: 0, y: 0, z: 0 }
+      //     continue
+      //   }
+      //   const el = elements[i]
+      //   const rel = keplerToPosition(days, el)
+      //   const parentName = el.orbit_target || 'Sun'
+      //   const parentIdx = idxByName.get(parentName)
+      //   const parentPos = parentIdx != null ? positions_AU[parentIdx] : { x: 0, y: 0, z: 0 }
+      //   positions_AU[i] = {
+      //     x: rel.x + parentPos.x,
+      //     y: rel.y + parentPos.y,
+      //     z: rel.z + parentPos.z,
+      //   }
+      // }
 
       const positions = positions_AU.map((p) => ({
         x: p.x * AU_units,
@@ -602,7 +787,7 @@ export default function Simulation() {
       cam.current.target.y += (camTarget.current.target.y - cam.current.target.y) * s
       cam.current.target.z += (camTarget.current.target.z - cam.current.target.z) * s
 
-      cam.current.dist = Math.max(0.1, cam.current.dist)
+      cam.current.dist = Math.max(1e-6, cam.current.dist)
 
       const basis = getCameraBasis()
 
@@ -617,6 +802,7 @@ export default function Simulation() {
             if (!showOrbitsMoons) continue
             if (!shouldShowMoon(i)) continue
           }
+          if (b.type === 'asteroid' && (!showAsteroids || !showOrbitsAsteroids)) continue
 
           const el = elements[i]
           const parentName = (el && el.orbit_target) || 'Sun'
@@ -714,6 +900,7 @@ export default function Simulation() {
         if (b.type === 'planet' && !showPlanets) continue
         if (b.type === 'dwarf-planet' && !showDwarfs) continue
         if (b.type === 'moon' && !shouldShowMoon(nameToIndex.get(b.name))) continue
+        if (b.type === 'asteroid' && !showAsteroids) continue
         const screenRad = (d.radUnits * f / d.proj.zProj) * (height / 2)
         const rPix = Math.max(1, screenRad)
         ctx.beginPath()
@@ -741,6 +928,8 @@ export default function Simulation() {
           el.style.display = 'none'
           return
         }
+        if (b.type === 'asteroid' && !showLabelsAsteroids) { el.style.display = 'none'; return }
+        if (b.type === 'asteroid' && !showAsteroids) { el.style.display = 'none'; return }
         const elOrbCol = elements[nameToIndex.get(b.name)]
         el.style.display = 'block'
         el.style.transform = `translate(${proj.x}px, ${proj.y}px)`
@@ -755,12 +944,14 @@ export default function Simulation() {
     // Mouse controls
     const onWheel = (e) => {
       e.preventDefault()
+      const k = 0.001
+      const factor = Math.exp(e.deltaY * k)
       const speed = Math.max(1, cam.current.dist * 0.1)
       const amount = e.deltaY * 0.05 * speed * zoomScale
       const locked = lockRef.current !== ' '
       const basis = getCameraBasis()
       if (locked) {
-        camTarget.current.dist = clamp(camTarget.current.dist + amount, 0.1, 4000)
+        camTarget.current.dist = clamp(camTarget.current.dist * factor, 1e-6, 4000)
       } else {
         camTarget.current.target.x -= amount * basis.forward.x
         camTarget.current.target.y -= amount * basis.forward.y
@@ -820,7 +1011,10 @@ export default function Simulation() {
     bodies,
     elements,
     idxByName,
+    nameToIndex,
     relOrbitPts,
+    pause,
+    timeUnit,
     timeScale,
     radiusScale,
     moveScale,
@@ -831,11 +1025,13 @@ export default function Simulation() {
     showOrbitsPlanets,
     showOrbitsDwarfplanets,
     showOrbitsMoons,
+    showOrbitsAsteroids,
     showLabels,
     showLabelsStars,
     showLabelsPlanets,
     showLabelsDwarfplanets,
     showLabelsMoons,
+    showLabelsAsteroids,
     showStars,
     showPlanets,
     showDwarfs,
@@ -843,9 +1039,8 @@ export default function Simulation() {
     showRegular,
     showIrregular,
     showSatellitesOnlyOfLocked,
+    showAsteroids,
     orbitColorMode,
-    pause,
-    nameToIndex,
   ])
 
   // Camera lock
@@ -876,11 +1071,7 @@ export default function Simulation() {
     camTarget.current.target.x = x
     camTarget.current.target.y = y
     camTarget.current.target.z = z
-
-    const rUnits = radiusUnitsOf(bodies[idx], 1)
-    // const minD = Math.max(rUnits * 2, 5)
-    // if (camTarget.current.dist < minD) camTarget.current.dist = minD
-  }, [lockTarget, nameToIndex, elements, idxByName, bodies])
+  }, [bodies, elements, nameToIndex, idxByName, lockTarget])
 
   // Panel resize
   useEffect(() => {
@@ -938,8 +1129,34 @@ export default function Simulation() {
             </label>
           </div>
           <div className='sim-row'>
-            <label>Time scale: {timeScale.toFixed(0)} d/s</label>
-            <input type='range' min='0.04167' max='365' value={timeScale} onChange={(e) => setTimeScale(+e.target.value)}/>
+            <label>
+              Time scale: {timeScale.toFixed(0)}
+              {' '}
+              <select
+                className='sim-select-small'
+                value={timeUnit}
+                onChange={(e) => {
+                  const next = e.target.value
+                  if (next === 'hours' && timeUnit === 'days') {
+                    setTimeScale(Math.min(24, Math.max(1, Math.round(timeScale * 24))))
+                  } else if (next === 'days' && timeUnit === 'hours') {
+                    setTimeScale(Math.min(365, Math.max(1, Math.round(timeScale / 24))))
+                  }
+                  setTimeUnit(next)
+                }}
+              >
+                <option value='hours'>h/s</option>
+                <option value='days'>d/s</option>
+              </select>
+            </label>
+            <input
+              type='range'
+              min={timeUnit === 'days' ? 1 : 1}
+              max={timeUnit === 'days' ? 365 : 24}
+              step={1}
+              value={timeScale}
+              onChange={(e) => setTimeScale(+e.target.value)}
+            />
           </div>
           <div className='sim-row'>
             <label>Radius scale: × {radiusScale}</label>
@@ -984,6 +1201,11 @@ export default function Simulation() {
                   <input type='checkbox' checked={showLabelsMoons} onChange={(e) => setShowLabelsMoons(e.target.checked)}/> Moons
                 </label>
               </div>
+              <div className='sim-dropdown-item'>
+                <label>
+                  <input type='checkbox' checked={showLabelsAsteroids} onChange={(e) => setShowLabelsAsteroids(e.target.checked)}/> Asteroids
+                </label>
+              </div>
             </SimDropdown>
           </div>
           <div className='sim-row'>
@@ -1013,6 +1235,11 @@ export default function Simulation() {
                   <input type='checkbox' checked={showOrbitsMoons} onChange={(e) => setShowOrbitsMoons(e.target.checked)}/> Moons
                 </label>
               </div>
+              <div className='sim-dropdown-item'>
+                <label>
+                  <input type='checkbox' checked={showOrbitsAsteroids} onChange={(e) => setShowOrbitsAsteroids(e.target.checked)}/> Asteroids
+                </label>
+              </div>
             </SimDropdown>
           </div>
           <div className='sim-row'>
@@ -1039,7 +1266,7 @@ export default function Simulation() {
               </div>
               <div className='sim-dropdown-item'>
                 <label>
-                  <input type='checkbox' checked={showRegular} onChange={(e) => setShowRegular(e.target.checked)}/> Show natural satellites
+                  <input type='checkbox' checked={showRegular} onChange={(e) => setShowRegular(e.target.checked)}/> Show regular satellites
                 </label>
               </div>
               <div className='sim-dropdown-item'>
@@ -1052,6 +1279,21 @@ export default function Simulation() {
                   <input type='checkbox' checked={showSatellitesOnlyOfLocked} onChange={(e) => setShowSatellitesOnlyOfLocked(e.target.checked)}/> Show satellites only for camera locked object
                 </label>
               </div>
+              <div className='sim-dropdown-item'>
+                <label>
+                  <input type='checkbox' checked={showAsteroids} onChange={(e) => setShowAsteroids(e.target.checked)}/> Show asteroids
+                </label>
+              </div>
+              {/* <div className='sim-dropdown-item'>
+                <label>
+                  <input type='checkbox' checked={showAsteroidBelt} onChange={(e) => setShowAsteroidBelt(e.target.checked)}/> Show asteroid belt
+                </label>
+              </div> */}
+              {/* <div className='sim-dropdown-item'>
+                <label>
+                  <input type='checkbox' checked={showKuiperBelt} onChange={(e) => setShowKuiperBelt(e.target.checked)}/> Show Kuiper belt
+                </label>
+              </div> */}
             </SimDropdown>
           </div>
           <div className='sim-row'>

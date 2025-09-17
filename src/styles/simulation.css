@@ -231,6 +231,15 @@
   }
 }
 
+.sim-select-small {
+  background: none;
+  border: none;
+
+  & option {
+    background: #1f2937;
+  }
+}
+
 .sim-note {
   opacity: 0.75;
   font-size: 12px;
