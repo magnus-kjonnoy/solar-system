@@ -5,8 +5,6 @@ import SimDropdown from '../Components/SimDropdown'
 
 import bg_Space from '/image/space.jpg'
 
-// ∞, ×, ·, °, π, Ω, ω, ρ, ☉, 
-
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi ?? Infinity, v)) }
 
 export default function Simulation() {
@@ -19,24 +17,24 @@ export default function Simulation() {
   const [showOrbits, setShowOrbits] = useState(true)
   const [showOrbitsStars, setShowOrbitsStars] = useState(false)
   const [showOrbitsPlanets, setShowOrbitsPlanets] = useState(true)
-  const [showOrbitsDwarfplanets, setShowOrbitsDwarfplanets] = useState(true)
+  const [showOrbitsDwarfplanets, setShowOrbitsDwarfplanets] = useState(false)
   const [showOrbitsMoons, setShowOrbitsMoons] = useState(true)
-  const [showOrbitsAsteroids, setShowOrbitsAsteroids] = useState(true)
+  const [showOrbitsAsteroids, setShowOrbitsAsteroids] = useState(false)
   const [showStars, setShowStars] = useState(true)
   const [showPlanets, setShowPlanets] = useState(true)
-  const [showDwarfs, setShowDwarfs] = useState(false)
+  const [showDwarfs, setShowDwarfs] = useState(true)
   const [showMoons, setShowMoons] = useState(true)
   const [showRegular, setShowRegular] = useState(true)
-  const [showIrregular, setShowIrregular] = useState(false)
+  const [showIrregular, setShowIrregular] = useState(true)
   const [showSatellitesOnlyOfLocked, setShowSatellitesOnlyOfLocked] = useState(true)
-  const [showAsteroids, setShowAsteroids] = useState(false)
+  const [showAsteroids, setShowAsteroids] = useState(true)
   const [showAsteroidBelt, setShowAsteroidBelt] = useState(false)
   const [showKuiperBelt, setShowKuiperBelt] = useState(false)
   const [showRings, setShowRings] = useState(true)
   const [orbitColorMode, setOrbitColorMode] = useState('default')
   const [pause, setPause] = useState(false)
   const [timeUnit, setTimeUnit] = useState('days')
-  const [timeScale, setTimeScale] = useState(1) // Days per real-time second
+  const [timeScale, setTimeScale] = useState(7) // Days per real-time second
   const [radiusScale, setRadiusScale] = useState(1)
   const [moveScale, setMoveScale] = useState(1)
   const [zoomScale, setZoomScale] = useState(1)
